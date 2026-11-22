@@ -116,19 +116,55 @@
     document.title = (item.title || '产品') + ' · ZhouSys';
     frame.src = item.page;
 
+    /* 按内容实际高度撑开：不写死高度，也不留白 */
     function fit() {
-      try {
-        var d = frame.contentDocument;
-        if (!d) return;
-        var h = Math.max(
-          d.documentElement ? d.documentElement.scrollHeight : 0,
-          d.body ? d.body.scrollHeight : 0
-        );
-        if (h > 0) frame.style.height = h + 'px';
-      } catch (e) { /* 读不到就保留默认高度 */ }
+      var d;
+      try { d = frame.contentDocument; } catch (e) { return; }
+      if (!d || !d.body) return;
+
+      var body = d.body;
+      var vh = window.innerHeight;
+
+      // 1) 先把 iframe 撑到一屏，让页面里的 100vh 按真实一屏计算
+      frame.style.height = vh + 'px';
+
+      // 2) 高度正好等于一屏的元素（典型 100vh 首屏）冻结成 px，
+      //    否则它会跟着 iframe 变高，永远算不出稳定高度
+      var nodes = body.querySelectorAll('*');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (el.getAttribute('data-zs-frozen') === '1') {
+          el.style.height = el.getAttribute('data-zs-h') || '';
+          el.removeAttribute('data-zs-frozen');
+        }
+        var rect = el.getBoundingClientRect();
+        if (rect.height > 0 && Math.abs(rect.height - vh) < 1) {
+          el.setAttribute('data-zs-h', el.style.height || '');
+          el.style.height = vh + 'px';
+          el.setAttribute('data-zs-frozen', '1');
+        }
+      }
+
+      // 3) 按 body 实际高度设置，读完就固定
+      var r = body.getBoundingClientRect();
+      var h = Math.max(r.height, body.scrollHeight, body.offsetHeight);
+      frame.style.height = (h > 0 ? Math.ceil(h) : 0) + 'px';
     }
 
-    frame.addEventListener('load', fit);
+    function watch() {
+      fit();
+      var d;
+      try { d = frame.contentDocument; } catch (e) { return; }
+      if (!d || !d.body) return;
+
+      // 图片加载完高度会变，补算一次
+      var imgs = d.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        if (!imgs[i].complete) imgs[i].addEventListener('load', fit);
+      }
+    }
+
+    frame.addEventListener('load', watch);
     window.addEventListener('resize', fit);
     setTimeout(fit, 300);
   }

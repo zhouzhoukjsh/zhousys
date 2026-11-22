@@ -455,14 +455,12 @@ ul, ol { list-style: none; }
    产品详情页（把上传的 HTML 嵌在标题栏与页脚之间）
    ========================================================= */
 .doc-page {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: clamp(28px, 4vw, 56px) var(--pad) clamp(48px, 6vw, 88px);
+  width: 100%;
 }
 .doc-frame {
-  width: 100%;
-  min-height: 60vh;
   display: block;
+  width: 100%;
+  height: 70vh;          /* 载入后由 JS 按内容实际高度替换，不固定 */
   border: 0;
   background: #fff;
 }
