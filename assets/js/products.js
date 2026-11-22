@@ -137,12 +137,16 @@
         var el = nodes[i];
         if (el.getAttribute('data-zs-frozen') === '1') {
           el.style.height = el.getAttribute('data-zs-h') || '';
+          el.style.minHeight = el.getAttribute('data-zs-mh') || '';
           el.removeAttribute('data-zs-frozen');
         }
         var rect = el.getBoundingClientRect();
         if (rect.height > 0 && Math.abs(rect.height - vh) < 1) {
           el.setAttribute('data-zs-h', el.style.height || '');
+          el.setAttribute('data-zs-mh', el.style.minHeight || '');
           el.style.height = vh + 'px';
+          // 关键：min-height:100vh 会压过 height，必须一起固定，否则首屏永远跟着 iframe 变高
+          el.style.minHeight = vh + 'px';
           el.setAttribute('data-zs-frozen', '1');
         }
       }
