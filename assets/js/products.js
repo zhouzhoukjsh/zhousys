@@ -148,7 +148,14 @@
       // 3) 按 body 实际高度设置，读完就固定
       var r = body.getBoundingClientRect();
       var h = Math.max(r.height, body.scrollHeight, body.offsetHeight);
-      frame.style.height = (h > 0 ? Math.ceil(h) : 0) + 'px';
+
+      // 关掉子页面自己的滚动条：滚轮直接带动外层页面，只有一层滚动
+      try {
+        d.documentElement.style.overflow = 'hidden';
+        body.style.overflow = 'hidden';
+      } catch (e) { /* 跨域时忽略 */ }
+
+      frame.style.height = (h > 0 ? Math.ceil(h) + 1 : 0) + 'px';
     }
 
     function watch() {
