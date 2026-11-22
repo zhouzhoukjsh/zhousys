@@ -80,10 +80,19 @@
         </div>
 
         <div class="field">
-          <label for="pPage">简介页（HTML 文件）</label>
+          <label for="pDir">简介页文件夹（推荐，图片会自动带上）</label>
+          <input type="file" id="pDir" webkitdirectory directory multiple>
+          <span class="field-tip">
+            选 HTML 所在的那个文件夹，里面的图片、CSS、JS 会一起上传，
+            HTML 里的相对路径照常能用。入口优先用 index.html，没有就用最外层的那个 .html。
+          </span>
+        </div>
+
+        <div class="field">
+          <label for="pPage">或者只传单个 HTML 文件</label>
           <input type="file" id="pPage" accept=".html,.htm">
           <span class="field-tip">
-            上传 .html 文件，会在站点的标题栏和页脚之间展示。图片请用外链或内嵌，避免相对路径。
+            只传 .html 时，里面的图片需要是外链或直接内嵌在 HTML 里，否则会加载不出来。
           </span>
         </div>
 

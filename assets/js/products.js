@@ -40,27 +40,63 @@
     if (!items || !items.length) return;
 
     var sorted = sortByDate(items);
-    var first = sorted[0];
-    var rest = sorted.slice(1);
+    var first = sorted[0];            // 1 → 首屏
+    var second = sorted[1] || null;   // 2 → 大图位
+    var rest = sorted.slice(2);       // 3 之后 → 卡片
 
-    // 大图位
-    var titleEl = document.getElementById('featureTitle');
-    var mediaEl = document.getElementById('featureMedia');
-    if (titleEl) titleEl.textContent = first.title;
-    if (mediaEl) {
-      mediaEl.innerHTML = '';
-      var a = document.createElement('a');
-      a.className = 'feature';
-      a.href = detailUrl(first);
-      var img = document.createElement('img');
-      img.className = 'feature__img';
-      img.src = first.cover || '';
-      img.alt = first.title || '';
-      a.appendChild(img);
-      mediaEl.appendChild(a);
+    /* 1. 首屏 */
+    var heroTitle = document.getElementById('heroTitle');
+    var heroMedia = document.getElementById('heroMedia');
+
+    if (heroTitle) {
+      heroTitle.innerHTML = '';
+      var ha = document.createElement('a');
+      ha.className = 'hero__link';
+      ha.href = detailUrl(first);
+      ha.textContent = first.title || '暂无';
+      heroTitle.appendChild(ha);
     }
 
-    // 更多产品
+    if (heroMedia) {
+      heroMedia.innerHTML = '';
+      if (first.cover) {
+        var hi = document.createElement('img');
+        hi.className = 'hero__img';
+        hi.src = first.cover;
+        hi.alt = first.title || '';
+        heroMedia.appendChild(hi);
+      } else {
+        var ph = document.createElement('div');
+        ph.className = 'ph ph--dark';
+        heroMedia.appendChild(ph);
+      }
+    }
+
+    /* 2. 大图位 */
+    var featureSection = document.getElementById('product');
+    var featureTitle = document.getElementById('featureTitle');
+    var featureMedia = document.getElementById('featureMedia');
+
+    if (second) {
+      if (featureTitle) featureTitle.textContent = second.title || '暂无';
+      if (featureMedia) {
+        featureMedia.innerHTML = '';
+        var fa = document.createElement('a');
+        fa.className = 'feature';
+        fa.href = detailUrl(second);
+        var fi = document.createElement('img');
+        fi.className = 'feature__img';
+        fi.src = second.cover || '';
+        fi.alt = second.title || '';
+        fa.appendChild(fi);
+        featureMedia.appendChild(fa);
+      }
+    } else if (featureSection) {
+      // 只有一个产品时，这块整段收起，避免又出现一个「暂无」
+      featureSection.style.display = 'none';
+    }
+
+    /* 3. 卡片 */
     var grid = document.getElementById('tileGrid');
     if (!grid) return;
     grid.innerHTML = '';

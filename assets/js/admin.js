@@ -244,18 +244,47 @@
     return ext.replace(/[^a-z0-9]/g, '') || 'jpg';
   }
 
+  /* 从文件夹里挑入口 HTML：优先 index.html，其次最外层的 html */
+  function pickEntry(list) {
+    var htmls = list.filter(function (f) { return /\.html?$/i.test(f.name); });
+    if (!htmls.length) return null;
+
+    var index = htmls.filter(function (f) {
+      return /(^|\/)index\.html?$/i.test(f.webkitRelativePath);
+    })[0];
+    if (index) return index;
+
+    htmls.sort(function (a, b) {
+      return a.webkitRelativePath.split('/').length - b.webkitRelativePath.split('/').length;
+    });
+    return htmls[0];
+  }
+
   function addProduct() {
     var title = $('pTitle').value.trim();
     var coverFile = $('pCover').files[0];
+    var dirFiles = $('pDir').files;
     var pageFile = $('pPage').files[0];
     var date = $('pDate').value || today();
     var msg = $('addMsg');
 
+    var useDir = dirFiles && dirFiles.length > 0;
+
     if (!title) { setMsg(msg, '请填写名称', 'err'); return; }
     if (!coverFile) { setMsg(msg, '请选择封面图', 'err'); return; }
-    if (!pageFile) { setMsg(msg, '请选择简介页 HTML 文件', 'err'); return; }
-    if (!/\.html?$/i.test(pageFile.name)) {
+    if (!useDir && !pageFile) {
+      setMsg(msg, '请选择简介页文件夹，或者选一个 HTML 文件', 'err');
+      return;
+    }
+    if (!useDir && !/\.html?$/i.test(pageFile.name)) {
       setMsg(msg, '简介页只支持 .html / .htm 文件', 'err');
+      return;
+    }
+
+    var list = useDir ? Array.prototype.slice.call(dirFiles) : [];
+    var entry = useDir ? pickEntry(list) : null;
+    if (useDir && !entry) {
+      setMsg(msg, '这个文件夹里没找到 .html 文件', 'err');
       return;
     }
 
@@ -265,26 +294,57 @@
 
     var id = Date.now();
     var coverPath = 'images/covers/' + id + '.' + safeExt(coverFile.name);
-    var pagePath = 'products/' + id + '.html';
-    var newItem = { id: id, title: title, date: date, cover: coverPath, page: pagePath };
+    var pagePath = '';
+    var uploaded = [];
+    var changes = [];
 
-    Promise.all([
-      coverFile.arrayBuffer(),
-      pageFile.text()
-    ]).then(function (results) {
-      var changes = [
-        { path: coverPath, content: arrayBufferToBase64(results[0]) },
-        { path: pagePath, content: b64Encode(results[1]) }
-      ];
+    /* 1. 封面 */
+    var job = coverFile.arrayBuffer().then(function (buf) {
+      changes.push({ path: coverPath, content: arrayBufferToBase64(buf) });
+    });
 
+    /* 2. 简介页：整个文件夹按原有相对路径上传 */
+    if (useDir) {
+      var top = list[0].webkitRelativePath.split('/')[0];
+      var entryRel = entry.webkitRelativePath.split('/').slice(1).join('/');
+      pagePath = 'products/' + id + '/' + entryRel;
+
+      // 逐个读，避免同时展开太多文件
+      list.forEach(function (f) {
+        job = job.then(function () {
+          return f.arrayBuffer().then(function (buf) {
+            var rel = f.webkitRelativePath.split('/').slice(1).join('/');
+            var dest = 'products/' + id + '/' + rel;
+            changes.push({ path: dest, content: arrayBufferToBase64(buf) });
+            uploaded.push(dest);
+          });
+        });
+      });
+      setMsg(msg, '正在读取 ' + list.length + ' 个文件…');
+    } else {
+      pagePath = 'products/' + id + '.html';
+      job = job.then(function () {
+        return pageFile.arrayBuffer().then(function (buf) {
+          changes.push({ path: pagePath, content: arrayBufferToBase64(buf) });
+          uploaded.push(pagePath);
+        });
+      });
+    }
+
+    var newItem = {
+      id: id, title: title, date: date,
+      cover: coverPath, page: pagePath, files: uploaded
+    };
+
+    job.then(function () {
       state.products.push(newItem);
       changes.push({ path: 'data/products.json', content: b64Encode(productsPayload()) });
-
-      setMsg(msg, '正在提交（3 个文件，1 次提交）…');
+      setMsg(msg, '正在提交（' + changes.length + ' 个文件，1 次提交）…');
       return commitMany(changes, '发布产品：' + title);
     }).then(function () {
       $('pTitle').value = '';
       $('pCover').value = '';
+      $('pDir').value = '';
       $('pPage').value = '';
       $('coverPreview').style.display = 'none';
       $('coverPreview').removeAttribute('src');
@@ -310,9 +370,18 @@
     var removed = state.products.splice(idx, 1)[0];
     var msg = $('addMsg');
 
+    // 收集这个产品名下的所有文件：新数据有 files 列表，老数据只有 page
+    var paths = [];
+    if (Array.isArray(removed.files) && removed.files.length) {
+      paths = removed.files.slice();
+    } else if (removed.page) {
+      paths.push(removed.page);
+    }
+    if (removed.cover) paths.push(removed.cover);
+
     var changes = [{ path: 'data/products.json', content: b64Encode(productsPayload()) }];
-    if (removed.page) changes.push({ path: removed.page, remove: true });
-    if (removed.cover) changes.push({ path: removed.cover, remove: true });
+    paths.filter(function (p, i) { return p && paths.indexOf(p) === i; })
+      .forEach(function (p) { changes.push({ path: p, remove: true }); });
 
     setMsg(msg, '正在删除…');
     commitMany(changes, '删除产品：' + item.title).then(function () {
