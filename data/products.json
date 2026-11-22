@@ -1,3 +1,16 @@
 {
-  "items": []
+  "items": [
+    {
+      "id": 1795355054753,
+      "title": "ZhouSys AI软件工作室-开启软件新时代",
+      "date": "2026-11-22",
+      "cover": "images/covers/1795355054753.png",
+      "page": "products/1795355054753/index.html",
+      "files": [
+        "products/1795355054753/index.html",
+        "products/1795355054753/.workbuddy/memory/2026-11-22.md",
+        "products/1795355054753/assets/zhousys-cover.png"
+      ]
+    }
+  ]
 }
