@@ -160,7 +160,12 @@
       var r = body.getBoundingClientRect();
       var h = Math.ceil(Math.max(r.height, body.scrollHeight, body.offsetHeight)) + 1;
       if (h <= 1) return;
-      if (Math.abs(h - lastH) < 1) return;   // 没变化就不动，避免抖动
+
+      if (Math.abs(h - lastH) < 1) {
+        // 高度没变：把测量时临时设成的「一屏」还回去，否则会停在一屏
+        frame.style.height = lastH + 'px';
+        return;
+      }
 
       lastH = h;
       frame.style.height = h + 'px';
