@@ -116,7 +116,9 @@
     document.title = (item.title || '产品') + ' · ZhouSys';
     frame.src = item.page;
 
-    /* 按内容实际高度撑开：不写死高度，也不留白 */
+    /* 把内层页面完全拉长，让它自己没有滚动条，只剩外层一条 */
+    var lastH = 0;
+
     function fit() {
       var d;
       try { d = frame.contentDocument; } catch (e) { return; }
@@ -145,30 +147,47 @@
         }
       }
 
-      // 3) 按 body 实际高度设置，读完就固定
-      var r = body.getBoundingClientRect();
-      var h = Math.max(r.height, body.scrollHeight, body.offsetHeight);
-
-      // 关掉子页面自己的滚动条：滚轮直接带动外层页面，只有一层滚动
+      // 3) 关掉内层滚动，外层拉满内容高度
       try {
         d.documentElement.style.overflow = 'hidden';
         body.style.overflow = 'hidden';
       } catch (e) { /* 跨域时忽略 */ }
 
-      frame.style.height = (h > 0 ? Math.ceil(h) + 1 : 0) + 'px';
+      var r = body.getBoundingClientRect();
+      var h = Math.ceil(Math.max(r.height, body.scrollHeight, body.offsetHeight)) + 1;
+      if (h <= 1) return;
+      if (Math.abs(h - lastH) < 1) return;   // 没变化就不动，避免抖动
+
+      lastH = h;
+      frame.style.height = h + 'px';
     }
 
     function watch() {
+      lastH = 0;
       fit();
+
       var d;
       try { d = frame.contentDocument; } catch (e) { return; }
       if (!d || !d.body) return;
 
-      // 图片加载完高度会变，补算一次
+      // 图片、字体、异步内容都会改变高度，补算几次
       var imgs = d.querySelectorAll('img');
       for (var i = 0; i < imgs.length; i++) {
         if (!imgs[i].complete) imgs[i].addEventListener('load', fit);
       }
+      if (d.fonts && d.fonts.ready) d.fonts.ready.then(fit).catch(function () {});
+
+      if (window.ResizeObserver) {
+        var timer = 0;
+        var ro = new ResizeObserver(function () {
+          clearTimeout(timer);
+          timer = setTimeout(fit, 80);
+        });
+        ro.observe(d.body);
+      }
+
+      setTimeout(fit, 400);
+      setTimeout(fit, 1200);
     }
 
     frame.addEventListener('load', watch);
