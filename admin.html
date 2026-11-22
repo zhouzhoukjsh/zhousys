@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>后台 · ZhouSys</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/img/favicon.ico">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <a href="index.html" class="nav__brand">
+      <img src="assets/img/logo.png" alt="" class="nav__logo">
+      <span class="nav__name">ZhouSys · 后台</span>
+    </a>
+    <nav class="nav__menu">
+      <a href="index.html" class="nav__link">返回网站</a>
+    </nav>
+  </div>
+</header>
+
+<main class="admin-main">
+  <div class="wrap" style="max-width: 860px;">
+
+    <!-- ========== 连接 ========== -->
+    <section class="admin-card" id="loginPanel">
+      <h2>连接 GitHub</h2>
+      <p class="admin-hint">
+        填入 GitHub Token 后才能发布。Token 只存在当前浏览器本地，不会上传到别的地方。
+      </p>
+
+      <div class="field">
+        <label for="tokenInput">Token</label>
+        <input type="password" id="tokenInput" placeholder="github_pat_... 或 ghp_...">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="repoInput">仓库</label>
+          <input type="text" id="repoInput" placeholder="用户名/仓库名">
+        </div>
+        <div class="field">
+          <label for="branchInput">分支</label>
+          <input type="text" id="branchInput" value="main">
+        </div>
+      </div>
+
+      <button class="abtn abtn--primary" id="connectBtn">连接</button>
+      <p class="admin-msg" id="loginMsg"></p>
+    </section>
+
+    <!-- ========== 管理区 ========== -->
+    <div id="adminArea" hidden>
+
+      <div class="admin-bar">
+        <span id="statusText">已连接</span>
+        <button class="abtn abtn--ghost" id="logoutBtn">退出</button>
+      </div>
+
+      <!-- 添加产品 -->
+      <section class="admin-card">
+        <h2>添加产品</h2>
+        <p class="admin-hint">
+          产品会按发布时间排到主页：最早的排最前（占大图位），越晚的越靠后。
+        </p>
+
+        <div class="field">
+          <label for="pTitle">名称</label>
+          <input type="text" id="pTitle" placeholder="产品名称">
+        </div>
+
+        <div class="field">
+          <label for="pCover">封面</label>
+          <input type="file" id="pCover" accept="image/*">
+          <img class="cover-preview" id="coverPreview" alt="">
+        </div>
+
+        <div class="field">
+          <label for="pPage">简介页（HTML 文件）</label>
+          <input type="file" id="pPage" accept=".html,.htm">
+          <span class="field-tip">
+            上传 .html 文件，会在站点的标题栏和页脚之间展示。图片请用外链或内嵌，避免相对路径。
+          </span>
+        </div>
+
+        <div class="field">
+          <label for="pDate">发布时间</label>
+          <input type="date" id="pDate">
+        </div>
+
+        <button class="abtn abtn--primary" id="addBtn">发布产品</button>
+        <p class="admin-msg" id="addMsg"></p>
+
+        <h3 class="sub-title">已有产品</h3>
+        <ul class="admin-list" id="productList"></ul>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom">
+      <p>Copyright © <span id="year">2026</span> ZhouSys. 保留所有权利。</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

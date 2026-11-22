@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZhouSys</title>
+<meta name="description" content="ZhouSys">
+<link rel="icon" href="assets/img/favicon.ico">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ==================== 顶部导航 ==================== -->
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <a href="index.html" class="nav__brand" aria-label="ZhouSys 首页">
+      <img src="assets/img/logo.png" alt="" class="nav__logo">
+      <span class="nav__name">ZhouSys</span>
+    </a>
+
+    <nav class="nav__menu" id="navMenu">
+      <a href="index.html" class="nav__link is-active">主页</a>
+      <span class="nav__link is-disabled" title="暂无内容">产品</span>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="菜单" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ==================== 首屏 ==================== -->
+  <section class="hero">
+    <div class="hero__media">
+      <!-- 替换为：<img class="ph-fill" src="..." alt=""> 或 <video autoplay muted loop playsinline> -->
+      <div class="ph ph--dark"></div>
+    </div>
+
+    <div class="hero__text">
+      <h1 class="display">暂无</h1>
+    </div>
+
+    <div class="hero__hint" aria-hidden="true"></div>
+  </section>
+
+  <!-- ==================== 通栏区块 · 图在上 ==================== -->
+  <section class="section section--alt" id="product">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <h2 class="title" id="featureTitle">暂无</h2>
+      </div>
+    </div>
+    <div class="wrap section__media reveal" id="featureMedia">
+      <div class="ph ph--hero"></div>
+    </div>
+  </section>
+
+  <!-- ==================== 分类标题 ==================== -->
+  <section class="section section--light section--group">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <h2 class="title">更多产品</h2>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 两列产品块 ==================== -->
+  <section class="tiles" id="tileGrid">
+    <article class="tile reveal">
+      <h3 class="tile__title">暂无</h3>
+      <div class="tile__media ph"></div>
+    </article>
+
+    <article class="tile reveal">
+      <h3 class="tile__title">暂无</h3>
+      <div class="tile__media ph"></div>
+    </article>
+
+    <article class="tile reveal">
+      <h3 class="tile__title">暂无</h3>
+      <div class="tile__media ph"></div>
+    </article>
+
+    <article class="tile reveal">
+      <h3 class="tile__title">暂无</h3>
+      <div class="tile__media ph"></div>
+    </article>
+  </section>
+
+  <!-- ==================== 新闻列表 ==================== -->
+  <section class="section section--light" id="blog">
+    <div class="wrap">
+      <div class="section__head section__head--left reveal">
+        <p class="eyebrow">新闻</p>
+        <h2 class="title">最新新闻</h2>
+      </div>
+
+      <!-- 后续接数据后由 JS 渲染 li.post -->
+      <ul class="posts" id="postList">
+        <li class="post"><p class="post__empty">暂无</p></li>
+        <li class="post"><p class="post__empty">暂无</p></li>
+        <li class="post"><p class="post__empty">暂无</p></li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- ==================== 页脚 ==================== -->
+<footer class="footer" id="about">
+  <div class="wrap">
+    <div class="footer__bottom">
+      <p>Copyright © <span id="year">2026</span> ZhouSys. 保留所有权利。</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script src="assets/js/products.js"></script>
+</body>
+</html>
