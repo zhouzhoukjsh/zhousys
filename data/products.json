@@ -1,3 +1,41 @@
 {
-  "items": []
+  "items": [
+    {
+      "id": 1795355054753,
+      "title": "ZhouSys AI软件工作室-开启软件新时代",
+      "date": "2026-11-22",
+      "cover": "images/covers/1795355054753.png",
+      "page": "products/1795355054753/index.html",
+      "files": [
+        "products/1795355054753/index.html",
+        "products/1795355054753/.workbuddy/memory/2026-11-22.md",
+        "products/1795355054753/assets/zhousys-cover.png"
+      ]
+    },
+    {
+      "id": 1795867745467,
+      "title": "自律使用电脑",
+      "date": "2026-11-28",
+      "cover": "images/covers/1795867745467.png",
+      "page": "products/1795867745467/index.html",
+      "files": [
+        "products/1795867745467/index.html",
+        "products/1795867745467/.workbuddy/memory/2026-11-28.md",
+        "products/1795867745467/assets/39-countup-end.png",
+        "products/1795867745467/assets/36-float-large.png",
+        "products/1795867745467/assets/23-lock.png",
+        "products/1795867745467/assets/57-main-renamed.png",
+        "products/1795867745467/assets/09-pomo-single.png",
+        "products/1795867745467/assets/02-supervise-play.png",
+        "products/1795867745467/assets/05-stats.png",
+        "products/1795867745467/assets/56-app-icon.png"
+      ],
+      "buttons": [
+        {
+          "label": "查看详情",
+          "url": ""
+        }
+      ]
+    }
+  ]
 }
