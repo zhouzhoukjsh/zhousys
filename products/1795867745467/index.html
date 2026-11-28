@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自律使用电脑，把注意力还给自己</title>
+<meta name="description" content="番茄专注、时间控制、长专注锁机。一款本地运行的电脑自律工具。">
+<style>
+  :root{
+    --green:#00a870;
+    --ink:#0e1f1a;
+    --muted:#61726c;
+    --paper:#ffffff;
+    --mist:#f4f7f6;
+    --deep:#071713;
+    --deep-soft:#0c211b;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{display:block;max-width:100%}
+  .wrap{width:min(1200px,90vw);margin:0 auto}
+
+  /* 首屏：程序名称 + 留白 + 居中巨型标题 + 大幅产品图 */
+  .hero{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:clamp(54px,7vh,92px) 0 0;
+    overflow:hidden;
+  }
+  .hero .mark{width:clamp(60px,7vw,84px);height:auto}
+  .hero .brand{
+    margin-top:clamp(18px,2.6vh,30px);
+    font-size:clamp(22px,2.4vw,34px);
+    font-weight:650;
+    letter-spacing:.08em;
+  }
+  .hero h1{
+    margin:clamp(12px,1.8vh,22px) 0 0;
+    font-size:clamp(46px,7vw,100px);
+    line-height:1.04;
+    letter-spacing:-.055em;
+    font-weight:750;
+  }
+  .hero h1 span{color:var(--green)}
+  .hero .lede{
+    margin:clamp(22px,3vh,34px) 0 0;
+    font-size:clamp(15px,1.45vw,19px);
+    line-height:1.9;
+    color:var(--muted);
+    letter-spacing:.06em;
+  }
+  .hero .device{
+    width:min(1180px,92vw);
+    margin-top:clamp(40px,5.5vh,66px);
+    overflow:hidden;
+    box-shadow:0 -1px 0 rgba(14,31,26,.06),0 -18px 70px rgba(14,31,26,.10);
+  }
+  .hero .device img{width:100%}
+
+  /* 深色声明段：超大标题 + 全幅锁机视觉 */
+  .statement{background:var(--deep);color:#fff;text-align:center;padding:clamp(100px,15vh,180px) 0 0}
+  .statement .eyebrow{font-size:13px;letter-spacing:.22em;color:#9fb2ab}
+  .statement h2{
+    margin:26px 0 0;
+    font-size:clamp(44px,7.2vw,104px);
+    line-height:1.08;
+    letter-spacing:-.05em;
+    font-weight:740;
+  }
+  .statement p{
+    margin:26px auto 0;
+    max-width:640px;
+    font-size:clamp(15px,1.4vw,18px);
+    line-height:1.9;
+    color:#9fb2ab;
+  }
+  .lock-visual{position:relative;margin-top:clamp(64px,9vh,110px);background:var(--deep-soft)}
+  .lock-visual img{width:100%}
+  .lock-visual::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:90px;
+    background:linear-gradient(var(--deep),rgba(7,23,19,0));pointer-events:none;
+  }
+
+  /* 数字段 */
+  .numbers{padding:clamp(100px,14vh,170px) 0}
+  .numbers .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(28px,5vw,80px)}
+  .number .label{font-size:13px;letter-spacing:.18em;color:var(--muted)}
+  .number .value{
+    margin-top:18px;
+    font-size:clamp(66px,8vw,116px);
+    line-height:1;
+    letter-spacing:-.06em;
+    font-weight:740;
+  }
+  .number .note{margin-top:18px;font-size:15px;line-height:1.8;color:var(--muted)}
+
+  /* 图文交替段 */
+  .feature{padding:clamp(90px,13vh,160px) 0}
+  .feature .split{
+    display:grid;
+    grid-template-columns:1fr 1.08fr;
+    gap:clamp(44px,6vw,96px);
+    align-items:center;
+  }
+  .feature.reverse .split{grid-template-columns:1.08fr 1fr}
+  .feature.reverse .copy{order:2}
+  .feature.reverse .shot{order:1}
+  .copy h2{
+    margin:0;
+    font-size:clamp(38px,5vw,66px);
+    line-height:1.12;
+    letter-spacing:-.045em;
+    font-weight:730;
+  }
+  .copy .desc{margin:26px 0 0;font-size:clamp(15px,1.35vw,17px);line-height:1.95;color:var(--muted)}
+  .copy ul{list-style:none;margin:34px 0 0;padding:0}
+  .copy li{
+    padding:15px 0;
+    border-top:1px solid rgba(14,31,26,.12);
+    font-size:15px;
+    letter-spacing:.02em;
+  }
+  .copy li:last-child{border-bottom:1px solid rgba(14,31,26,.12)}
+  .shot{
+    overflow:hidden;
+    background:var(--mist);
+    box-shadow:0 26px 70px rgba(14,31,26,.10);
+  }
+  .shot img{width:100%}
+
+  .feature.dark{background:var(--deep-soft);color:#fff}
+  .feature.dark .copy .desc{color:#a2b4ad}
+  .feature.dark .copy li{border-color:rgba(255,255,255,.14)}
+  .feature.dark .shot{box-shadow:0 32px 90px rgba(0,0,0,.42)}
+
+  /* 悬浮窗段 */
+  .float{background:var(--mist);padding:clamp(100px,14vh,170px) 0;text-align:center}
+  .float h2{
+    margin:20px 0 0;
+    font-size:clamp(38px,5.4vw,74px);
+    line-height:1.12;
+    letter-spacing:-.045em;
+    font-weight:730;
+  }
+  .float p{margin:24px auto 0;max-width:560px;font-size:16px;line-height:1.9;color:var(--muted)}
+  .float-stage{
+    margin:clamp(52px,7vh,80px) auto 0;
+    width:min(760px,100%);
+    padding:clamp(36px,6vw,80px);
+    border-radius:22px;
+    background:linear-gradient(145deg,#123a2e,#081d17);
+    box-shadow:0 32px 80px rgba(8,29,23,.22);
+  }
+  .float-stage img{width:min(390px,100%);margin:0 auto;border-radius:14px}
+  .float-points{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:24px;
+    margin:clamp(48px,6vh,70px) auto 0;width:min(900px,100%);
+  }
+  .float-points div{border-top:1px solid rgba(14,31,26,.16);padding-top:20px;font-size:15px;color:var(--muted)}
+
+  /* 双卡补充段 */
+  .duo{padding:clamp(100px,14vh,160px) 0}
+  .duo .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px)}
+  .duo h3{margin:0;font-size:clamp(28px,3.4vw,44px);letter-spacing:-.035em;line-height:1.2;font-weight:720}
+  .duo p{margin:16px 0 28px;font-size:15px;line-height:1.9;color:var(--muted)}
+  .duo .shot{box-shadow:0 20px 56px rgba(14,31,26,.08)}
+
+  /* 收束段：内容区块，不是页脚 */
+  .closing{background:var(--deep);color:#fff;padding:clamp(110px,16vh,190px) 0 clamp(80px,12vh,140px);text-align:center;overflow:hidden}
+  .closing h2{
+    margin:0;
+    font-size:clamp(42px,6.6vw,94px);
+    line-height:1.1;
+    letter-spacing:-.05em;
+    font-weight:740;
+  }
+  .closing .sub{margin:28px auto 0;max-width:620px;font-size:clamp(15px,1.4vw,18px);line-height:1.9;color:#9fb2ab}
+  .platforms{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:1px;background:rgba(255,255,255,.13);
+    margin-top:clamp(70px,10vh,120px);
+  }
+  .platforms div{background:var(--deep);padding:clamp(30px,4vw,52px) 20px}
+  .platforms b{display:block;font-size:clamp(20px,2.2vw,30px);font-weight:650;letter-spacing:-.02em}
+  .platforms span{display:block;margin-top:12px;font-size:13px;line-height:1.7;color:#93a9a0}
+  /* 结尾呼应段：与开头同构，文字稍作推进 */
+  .hero.reprise{min-height:auto;padding-top:clamp(90px,14vh,150px);padding-bottom:clamp(64px,9vh,110px)}
+
+  /* 滚动揭示 */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
+  .reveal.visible{opacity:1;transform:none}
+
+  @media (max-width:820px){
+    .hero{min-height:auto;padding-top:72px}
+    .hero .device{width:100%}
+    .numbers .grid,.float-points,.duo .grid{grid-template-columns:1fr}
+    .feature .split,.feature.reverse .split{grid-template-columns:1fr}
+    .feature.reverse .copy{order:1}
+    .feature.reverse .shot{order:2}
+    .duo .grid{gap:70px}
+    .platforms{grid-template-columns:1fr}
+    .copy ul{margin-top:26px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .reveal{opacity:1;transform:none;transition:none}
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <img class="mark reveal" src="assets/56-app-icon.png" alt="应用图标">
+  <div class="brand reveal">自律使用电脑</div>
+  <h1 class="reveal">把注意力，<br><span>还给自己。</span></h1>
+  <p class="lede reveal">番茄专注、时间控制、长专注锁机<br>从管住每一次打开开始</p>
+  <div class="device reveal">
+    <img src="assets/57-main-renamed.png" alt="应用主界面">
+  </div>
+</section>
+
+<section class="statement">
+  <div class="wrap">
+    <div class="eyebrow reveal">让用电脑这件事，有分寸</div>
+    <h2 class="reveal">到点，就锁屏。</h2>
+    <p class="reveal">锁机是帮自己守约，不是防破解。<br>应急退出快捷键一直可用，代价是扣积分。</p>
+  </div>
+  <div class="lock-visual reveal">
+    <img src="assets/23-lock.png" alt="全屏锁机界面">
+  </div>
+</section>
+
+<section class="numbers">
+  <div class="wrap grid">
+    <div class="number reveal">
+      <div class="label">番茄计时</div>
+      <div class="value">4</div>
+      <div class="note">种计时策略，从自定义轮次到累计固定，按自己的节奏来</div>
+    </div>
+    <div class="number reveal">
+      <div class="label">时间控制</div>
+      <div class="value">3</div>
+      <div class="note">类管控对象，玩机总时长、指定应用、指定网站，超了就锁</div>
+    </div>
+    <div class="number reveal">
+      <div class="label">趋势回顾</div>
+      <div class="value">7</div>
+      <div class="note">天趋势回顾，一周的时间去向都摊开来看</div>
+    </div>
+  </div>
+</section>
+
+<section class="feature">
+  <div class="wrap split">
+    <div class="copy reveal">
+      <h2>用番茄，<br>攒出完整的时间。</h2>
+      <p class="desc">工作与休息分开计时，攒下休息额度，到了点再走开。定时的番茄会提前提醒，开始之前还能反悔。</p>
+      <ul>
+        <li>自定义轮次 / 固定循环</li>
+        <li>累计手动 / 累计固定</li>
+        <li>完成番茄得积分，跳过锁机扣积分</li>
+      </ul>
+    </div>
+    <div class="shot reveal">
+      <img src="assets/09-pomo-single.png" alt="番茄专注界面">
+    </div>
+  </div>
+</section>
+
+<section class="feature dark">
+  <div class="wrap split">
+    <div class="copy reveal">
+      <h2>玩多久，<br>你自己说了算。</h2>
+      <p class="desc">给玩机时长划一条线。连续玩到上限、打开某个程序、浏览某个网站，都可以单独设规则。超时后全屏锁机，白名单里的程序和网站不弹窗也不计时。</p>
+      <ul>
+        <li>玩机总时长</li>
+        <li>指定应用 / 指定网站</li>
+        <li>白名单放行，程序与网站都支持</li>
+      </ul>
+    </div>
+    <div class="shot reveal">
+      <img src="assets/02-supervise-play.png" alt="时间控制界面">
+    </div>
+  </div>
+</section>
+
+<section class="float">
+  <div class="wrap">
+    <h2 class="reveal">时间，浮在眼前。</h2>
+    <p class="reveal">常驻小窗显示剩余时间，不用切回主界面也能知道还有多久。</p>
+    <div class="float-stage reveal">
+      <img src="assets/36-float-large.png" alt="悬浮窗显示剩余时间">
+    </div>
+    <div class="float-points">
+      <div class="reveal">长专注与锁机，都能看到剩余时间</div>
+      <div class="reveal">暂停时说明原因，知道自己为什么停下</div>
+      <div class="reveal">休息额度看得见，按时休息不靠记性</div>
+    </div>
+  </div>
+</section>
+
+<section class="duo">
+  <div class="wrap grid">
+    <div class="reveal">
+      <h3>深夜，早点停。</h3>
+      <p>睡眠计划到点自动锁机，正计时一直走到你主动关掉它。想继续用，得自己按那一下。</p>
+      <div class="shot"><img src="assets/39-countup-end.png" alt="正计时锁机界面"></div>
+    </div>
+    <div class="reveal">
+      <h3>时间花在哪，看得见。</h3>
+      <p>今日用机、近七天趋势、应用排行和时间轴，把用过的时间摊开来看，才知道该从哪里收回来。</p>
+      <div class="shot"><img src="assets/05-stats.png" alt="统计界面"></div>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <h2 class="reveal">自己的电脑，<br>自己守约。</h2>
+    <p class="sub reveal">Windows、Linux、macOS 都能用。到点提醒，到点锁屏，在哪台电脑上都是一样的节奏。</p>
+    <div class="platforms reveal">
+      <div><b>Windows</b><span>双击 ComTimeKeeper.exe</span></div>
+      <div><b>Linux</b><span>安装 deb 包</span></div>
+      <div><b>macOS</b><span>运行 run.command</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="hero reprise">
+  <img class="mark reveal" src="assets/56-app-icon.png" alt="应用图标">
+  <div class="brand reveal">自律使用电脑</div>
+  <h1 class="reveal">从今天起，<span>把注意力，<br>还给自己。</span></h1>
+  <p class="lede reveal">番茄专注、时间控制、长专注锁机<br>下一次打开电脑，就从这里开始</p>
+</section>
+
+<script>
+(function(){
+  var items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    items.forEach(function(el){ el.classList.add('visible'); });
+    return;
+  }
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  items.forEach(function(el){ observer.observe(el); });
+})();
+</script>
+</body>
+</html>
