@@ -101,11 +101,50 @@
           <input type="date" id="pDate">
         </div>
 
+        <div class="field">
+          <label>按钮</label>
+          <div class="btn-rows" id="btnRows"></div>
+          <button class="abtn abtn--ghost abtn--sm" id="addBtnRow" type="button">+ 添加按钮</button>
+          <span class="field-tip">
+            链接留空的按钮就是「查看详情」，点了进产品详情页；
+            填了链接的按钮，点了直接跳去那个地址（比如购买页）。
+          </span>
+        </div>
+
         <button class="abtn abtn--primary" id="addBtn">发布产品</button>
         <p class="admin-msg" id="addMsg"></p>
 
         <h3 class="sub-title">已有产品</h3>
         <ul class="admin-list" id="productList"></ul>
+      </section>
+
+      <!-- 新闻 -->
+      <section class="admin-card">
+        <h2>添加新闻</h2>
+        <p class="admin-hint">
+          上传 Word（.docx）就行，图片会自动抽取上传，正文按原排版显示。
+        </p>
+
+        <div class="field">
+          <label for="nTitle">标题（留空用文件名）</label>
+          <input type="text" id="nTitle" placeholder="新闻标题">
+        </div>
+
+        <div class="field">
+          <label for="nFile">Word 文档（.docx）</label>
+          <input type="file" id="nFile" accept=".docx">
+        </div>
+
+        <div class="field">
+          <label for="nDate">日期</label>
+          <input type="date" id="nDate">
+        </div>
+
+        <button class="abtn abtn--primary" id="addNewsBtn">发布新闻</button>
+        <p class="admin-msg" id="newsMsg"></p>
+
+        <h3 class="sub-title">已有新闻</h3>
+        <ul class="admin-list" id="newsList"></ul>
       </section>
 
     </div>
@@ -120,6 +159,7 @@
   </div>
 </footer>
 
+<script src="assets/js/vendor/mammoth.browser.min.js"></script>
 <script src="assets/js/main.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>

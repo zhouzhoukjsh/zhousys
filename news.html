@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新闻 · ZhouSys</title>
+<link rel="icon" href="assets/img/favicon.ico">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  /* 新闻详情整页滚动：标题栏、正文、页脚一起走，只有一条滚动条 */
+  main { flex: 0 0 auto; }
+  .nav { position: static; }
+  .doc-page { padding: clamp(24px, 3vw, 40px) 0 0; }
+</style>
+</head>
+<body data-page="news">
+
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <a href="index.html" class="nav__brand" aria-label="ZhouSys 首页">
+      <img src="assets/img/logo.png" alt="" class="nav__logo">
+      <span class="nav__name">ZhouSys</span>
+    </a>
+
+    <nav class="nav__menu" id="navMenu">
+      <a href="index.html" class="nav__link">主页</a>
+      <span class="nav__link is-disabled" title="暂无内容">产品</span>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="菜单" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="doc-page">
+    <div class="wrap">
+      <div class="news-head" id="newsHead" hidden>
+        <p class="eyebrow">新闻</p>
+        <h1 class="title" id="newsTitle"></h1>
+        <p class="news-date" id="newsDate"></p>
+      </div>
+    </div>
+    <iframe class="doc-frame" id="docFrame" title="新闻正文"></iframe>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom">
+      <p>Copyright © <span id="year">2026</span> ZhouSys. 保留所有权利。</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script src="assets/js/products.js"></script>
+</body>
+</html>

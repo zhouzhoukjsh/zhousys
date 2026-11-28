@@ -15,7 +15,8 @@
     owner: '',
     repo: '',
     branch: 'main',
-    products: []
+    products: [],
+    news: []
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -174,6 +175,9 @@
   function loadData() {
     return ghGet('data/products.json').then(function (res) {
       state.products = res ? (JSON.parse(b64Decode(res.content)).items || []) : [];
+      return ghGet('data/news.json');
+    }).then(function (res) {
+      state.news = res ? (JSON.parse(b64Decode(res.content)).items || []) : [];
     });
   }
 
@@ -333,7 +337,8 @@
 
     var newItem = {
       id: id, title: title, date: date,
-      cover: coverPath, page: pagePath, files: uploaded
+      cover: coverPath, page: pagePath, files: uploaded,
+      buttons: collectButtons()
     };
 
     job.then(function () {
@@ -393,6 +398,262 @@
     });
   }
 
+  /* ---------- 产品按钮 ---------- */
+  function addBtnRow(label, url) {
+    var box = $('btnRows');
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+
+    var name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'btn-label';
+    name.placeholder = '按钮文字';
+    name.value = label || '';
+
+    var link = document.createElement('input');
+    link.type = 'text';
+    link.className = 'btn-url';
+    link.placeholder = '链接（留空 = 进详情页）';
+    link.value = url || '';
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn-del';
+    del.textContent = '×';
+    del.title = '删除这个按钮';
+    del.addEventListener('click', function () {
+      if (box.children.length <= 1) {
+        name.value = '';
+        link.value = '';
+        return;
+      }
+      row.remove();
+    });
+
+    row.appendChild(name);
+    row.appendChild(link);
+    row.appendChild(del);
+    box.appendChild(row);
+  }
+
+  function renderBtnRows(buttons) {
+    var box = $('btnRows');
+    if (!box) return;
+    box.innerHTML = '';
+    var list = (buttons && buttons.length) ? buttons : [{ label: '查看详情', url: '' }];
+    list.forEach(function (b) { addBtnRow(b.label || '', b.url || ''); });
+  }
+
+  function collectButtons() {
+    var rows = document.querySelectorAll('#btnRows .btn-row');
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var label = rows[i].querySelector('.btn-label').value.trim();
+      var url = rows[i].querySelector('.btn-url').value.trim();
+      if (!label) continue;                 // 没写名字的丢掉
+      out.push({ label: label, url: url }); // url 为空 = 查看详情
+    }
+    return out;
+  }
+
+  /* ---------- 新闻 ---------- */
+  function newsPayload() {
+    return JSON.stringify({ items: state.news }, null, 2);
+  }
+
+  // 从 mammoth 输出的 HTML 里抠出 base64 图片
+  function extractInlineImages(html) {
+    var re = /data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)/g;
+    var found = [];
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      found.push({
+        full: m[0],
+        ext: m[1].toLowerCase().replace('jpeg', 'jpg'),
+        b64: m[2].replace(/\s/g, '')
+      });
+    }
+    return found;
+  }
+
+  // 把正文包成完整页面，详情页 iframe 直接显示
+  // Word 里第一行往往就是大标题，转换后会与站点标题重复，去掉
+  function stripDupTitle(html, title) {
+    try {
+      var doc = new DOMParser().parseFromString('<div id="__r">' + html + '</div>', 'text/html');
+      var root = doc.getElementById('__r');
+      if (!root) return html;
+
+      var first = root.firstElementChild;
+      if (first && /^H[1-2]$/i.test(first.tagName)) {
+        var a = (first.textContent || '').replace(/\s/g, '');
+        var b = (title || '').replace(/\s/g, '');
+        if (a && b && (a === b || a.indexOf(b) > -1 || b.indexOf(a) > -1)) {
+          first.remove();
+        }
+      }
+      return root.innerHTML;
+    } catch (e) {
+      return html;
+    }
+  }
+
+  function wrapNewsHtml(bodyHtml) {
+    var css = 'body{margin:0;background:#fff;color:#1d1d1f;' +
+      'font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;' +
+      'font-size:17px;line-height:1.78;-webkit-font-smoothing:antialiased}' +
+      'article{max-width:760px;margin:0 auto;padding:6px 4px 48px}' +
+      'h1,h2,h3,h4{line-height:1.3;letter-spacing:-.012em;margin:34px 0 14px;font-weight:600}' +
+      'h1{font-size:30px}h2{font-size:24px}h3{font-size:20px}' +
+      'p{margin:0 0 16px}' +
+      'img{max-width:100%;height:auto;display:block;margin:22px 0;border-radius:10px}' +
+      'table{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}' +
+      'th,td{border:1px solid #e5e5ea;padding:9px 12px;text-align:left}' +
+      'th{background:#f5f5f7;font-weight:600}' +
+      'blockquote{margin:18px 0;padding:8px 16px;border-left:3px solid #2aa9e0;color:#555}' +
+      'ul,ol{margin:0 0 16px;padding-left:24px}li{margin-bottom:6px}';
+
+    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<style>' + css + '</style></head><body><article>' + bodyHtml + '</article></body></html>';
+  }
+
+  function addNews() {
+    var titleInput = $('nTitle').value.trim();
+    var file = $('nFile').files[0];
+    var date = $('nDate').value || today();
+    var msg = $('newsMsg');
+
+    if (!file) { setMsg(msg, '请选择 Word 文档（.docx）', 'err'); return; }
+    if (!/\.docx$/i.test(file.name)) {
+      setMsg(msg, '只支持 .docx，请在 Word 里另存为 .docx', 'err');
+      return;
+    }
+    if (!window.mammoth) { setMsg(msg, 'Word 解析组件没加载上，刷新页面再试', 'err'); return; }
+
+    var btn = $('addNewsBtn');
+    btn.disabled = true;
+    setMsg(msg, '正在解析 Word…');
+
+    var id = Date.now();
+    var title = titleInput || file.name.replace(/\.docx$/i, '');
+    var newItem = null;
+
+    file.arrayBuffer().then(function (buf) {
+      return window.mammoth.convertToHtml({ arrayBuffer: buf });
+    }).then(function (result) {
+      var content = stripDupTitle(result.value || '', title);
+      var changes = [];
+      var images = extractInlineImages(content);
+      var imgPaths = [];
+
+      images.forEach(function (img, i) {
+        var path = 'news/images/' + id + '_' + (i + 1) + '.' + img.ext;
+        changes.push({ path: path, content: img.b64 });
+        imgPaths.push(path);
+        content = content.split(img.full).join('../' + path);   // 相对 news/<id>.html
+      });
+
+      var pagePath = 'news/' + id + '.html';
+      changes.push({ path: pagePath, content: b64Encode(wrapNewsHtml(content)) });
+
+      newItem = {
+        id: id,
+        title: title,
+        date: date,
+        page: pagePath,
+        images: imgPaths
+      };
+      state.news.push(newItem);
+      changes.push({ path: 'data/news.json', content: b64Encode(newsPayload()) });
+
+      setMsg(msg, '正在提交（' + changes.length + ' 个文件，1 次提交）…');
+      return commitMany(changes, '发布新闻：' + title);
+    }).then(function () {
+      $('nTitle').value = '';
+      $('nFile').value = '';
+      $('nDate').value = today();
+      renderNewsList();
+      setMsg(msg, '发布成功，站点约 1 分钟后生效', 'ok');
+    }).catch(function (e) {
+      if (newItem) {
+        var i = state.news.findIndex(function (x) { return x.id === newItem.id; });
+        if (i > -1) state.news.splice(i, 1);
+      }
+      setMsg(msg, e.message, 'err');
+    }).then(function () {
+      btn.disabled = false;
+    });
+  }
+
+  function removeNews(item) {
+    if (!confirm('确定删除「' + item.title + '」吗？正文和图片会一起删掉。')) return;
+
+    var idx = state.news.findIndex(function (x) { return x.id === item.id; });
+    if (idx === -1) return;
+
+    var removed = state.news.splice(idx, 1)[0];
+    var changes = [{ path: 'data/news.json', content: b64Encode(newsPayload()) }];
+
+    if (removed.page) changes.push({ path: removed.page, remove: true });
+    (removed.images || []).forEach(function (p) {
+      changes.push({ path: p, remove: true });
+    });
+
+    setMsg($('newsMsg'), '正在删除…');
+    commitMany(changes, '删除新闻：' + item.title).then(function () {
+      renderNewsList();
+      setMsg($('newsMsg'), '已删除', 'ok');
+    }).catch(function (e) {
+      state.news.splice(idx, 0, removed);
+      setMsg($('newsMsg'), e.message, 'err');
+    });
+  }
+
+  function renderNewsList() {
+    var ul = $('newsList');
+    if (!ul) return;
+    ul.innerHTML = '';
+
+    if (!state.news.length) {
+      var li = document.createElement('li');
+      li.className = 'admin-empty';
+      li.textContent = '暂无';
+      ul.appendChild(li);
+      return;
+    }
+
+    state.news.slice().sort(function (a, b) {
+      return (b.date || '').localeCompare(a.date || '') || ((b.id || 0) - (a.id || 0));
+    }).forEach(function (it) {
+      var li = document.createElement('li');
+      li.className = 'admin-item';
+
+      var info = document.createElement('div');
+      info.className = 'admin-item-info';
+
+      var t = document.createElement('span');
+      t.className = 'admin-item-title';
+      t.textContent = it.title;
+
+      var m = document.createElement('span');
+      m.className = 'admin-item-meta';
+      m.textContent = it.date || '';
+
+      info.appendChild(t);
+      info.appendChild(m);
+      li.appendChild(info);
+
+      var del = document.createElement('button');
+      del.className = 'abtn abtn--danger';
+      del.textContent = '删除';
+      del.addEventListener('click', function () { removeNews(it); });
+      li.appendChild(del);
+
+      ul.appendChild(li);
+    });
+  }
+
   /* ---------- 连接 / 退出 ---------- */
   function connect() {
     var token = $('tokenInput').value.trim();
@@ -420,8 +681,11 @@
       $('adminArea').hidden = false;
       $('statusText').textContent = '已连接 ' + state.owner + '/' + state.repo + '（' + state.branch + '）';
       $('pDate').value = today();
+      $('nDate').value = today();
+      renderBtnRows(null);
       setMsg($('loginMsg'), '');
       renderList();
+      renderNewsList();
     }).catch(function (e) {
       setMsg($('loginMsg'), e.message, 'err');
     });
@@ -450,6 +714,10 @@
     $('connectBtn').addEventListener('click', connect);
     $('logoutBtn').addEventListener('click', logout);
     $('addBtn').addEventListener('click', addProduct);
+    $('addBtnRow').addEventListener('click', function () { addBtnRow('', ''); });
+    $('addNewsBtn').addEventListener('click', addNews);
+
+    renderBtnRows(null);
 
     // 封面预览
     $('pCover').addEventListener('change', function () {

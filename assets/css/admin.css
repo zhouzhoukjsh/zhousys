@@ -213,3 +213,50 @@
   .field-row { grid-template-columns: 1fr; gap: 0; }
   .admin-item-cover { width: 72px; height: 42px; }
 }
+
+/* ---------- 按钮行编辑 ---------- */
+.btn-rows { margin-bottom: 10px; }
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.btn-row input {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+}
+.btn-row input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(42, 169, 224, 0.14);
+}
+
+.abtn--sm { padding: 8px 16px; font-size: 13px; }
+
+.btn-del {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-del:hover { color: #d64545; border-color: #f0c4c4; }
+
+@media (max-width: 640px) {
+  .btn-row { grid-template-columns: 1fr; gap: 8px; }
+  .btn-row .btn-del { justify-self: start; }
+}

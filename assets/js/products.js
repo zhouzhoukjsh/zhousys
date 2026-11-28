@@ -1,28 +1,17 @@
 /* =========================================================
-   ZhouSys · 产品渲染
-   首页：按发布时间从早到晚排在主页（最早的占大图位，越晚越靠后）
-   详情页：把上传的 HTML 嵌进标题栏与页脚之间
+   ZhouSys · 前台渲染
+   主页：产品按发布时间从早到晚占位（首屏 → 大图位 → 卡片），新闻最新在前
+   详情页：把内容嵌进标题栏与页脚之间，只有一条外层滚动条
    ========================================================= */
 (function () {
   'use strict';
 
-  var DATA = 'data/products.json';
+  var DATA_PRODUCTS = 'data/products.json';
+  var DATA_NEWS = 'data/news.json';
 
-  function sortByDate(items) {
-    return items.slice().sort(function (a, b) {
-      var da = a.date || '';
-      var db = b.date || '';
-      if (da === db) return (a.id || 0) - (b.id || 0);   // 同一天按创建先后
-      return da.localeCompare(db);                        // 越早越前
-    });
-  }
-
-  function detailUrl(item) {
-    return 'product.html?id=' + encodeURIComponent(item.id);
-  }
-
-  function loadProducts() {
-    return fetch(DATA, { cache: 'no-cache' })
+  /* ---------------- 工具 ---------------- */
+  function loadJSON(path) {
+    return fetch(path, { cache: 'no-cache' })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
@@ -31,128 +20,215 @@
         return Array.isArray(data.items) ? data.items : [];
       })
       .catch(function () {
-        return null;   // 读不到就保持页面上的「暂无」
+        return [];             // 读不到就当没有，页面保留「暂无」
       });
   }
 
-  /* ---------------- 首页 ---------------- */
-  function renderHome(items) {
-    if (!items || !items.length) return;
+  function param(name) {
+    return new URLSearchParams(location.search).get(name);
+  }
 
-    var sorted = sortByDate(items);
-    var first = sorted[0];            // 1 → 首屏
-    var second = sorted[1] || null;   // 2 → 大图位
-    var rest = sorted.slice(2);       // 3 之后 → 卡片
-
-    /* 1. 首屏 */
-    var heroTitle = document.getElementById('heroTitle');
-    var heroMedia = document.getElementById('heroMedia');
-
-    if (heroTitle) {
-      heroTitle.innerHTML = '';
-      var ha = document.createElement('a');
-      ha.className = 'hero__link';
-      ha.href = detailUrl(first);
-      ha.textContent = first.title || '暂无';
-      heroTitle.appendChild(ha);
-    }
-
-    if (heroMedia) {
-      heroMedia.innerHTML = '';
-      if (first.cover) {
-        var hi = document.createElement('img');
-        hi.className = 'hero__img';
-        hi.src = first.cover;
-        hi.alt = first.title || '';
-        heroMedia.appendChild(hi);
-      } else {
-        var ph = document.createElement('div');
-        ph.className = 'ph ph--dark';
-        heroMedia.appendChild(ph);
-      }
-    }
-
-    /* 2. 大图位 */
-    var featureSection = document.getElementById('product');
-    var featureTitle = document.getElementById('featureTitle');
-    var featureMedia = document.getElementById('featureMedia');
-
-    if (second) {
-      if (featureTitle) featureTitle.textContent = second.title || '暂无';
-      if (featureMedia) {
-        featureMedia.innerHTML = '';
-        var fa = document.createElement('a');
-        fa.className = 'feature';
-        fa.href = detailUrl(second);
-        var fi = document.createElement('img');
-        fi.className = 'feature__img';
-        fi.src = second.cover || '';
-        fi.alt = second.title || '';
-        fa.appendChild(fi);
-        featureMedia.appendChild(fa);
-      }
-    } else if (featureSection) {
-      // 只有一个产品时，这块整段收起，避免又出现一个「暂无」
-      featureSection.style.display = 'none';
-    }
-
-    /* 3. 卡片 */
-    var grid = document.getElementById('tileGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    if (!rest.length) {
-      var empty = document.createElement('p');
-      empty.className = 'tiles__empty';
-      empty.textContent = '暂无';
-      grid.appendChild(empty);
-      return;
-    }
-
-    rest.forEach(function (it) {
-      var a = document.createElement('a');
-      a.className = 'tile tile--link';
-      a.href = detailUrl(it);
-
-      var h3 = document.createElement('h3');
-      h3.className = 'tile__title';
-      h3.textContent = it.title || '暂无';
-
-      var media = document.createElement('div');
-      media.className = 'tile__media';
-
-      var img = document.createElement('img');
-      img.className = 'tile__img';
-      img.src = it.cover || '';
-      img.alt = it.title || '';
-      media.appendChild(img);
-
-      a.appendChild(h3);
-      a.appendChild(media);
-      grid.appendChild(a);
+  function sortAsc(items) {
+    return items.slice().sort(function (a, b) {
+      var da = a.date || '';
+      var db = b.date || '';
+      if (da === db) return (a.id || 0) - (b.id || 0);
+      return da.localeCompare(db);          // 越早越前
     });
   }
 
-  /* ---------------- 详情页 ---------------- */
-  function renderDetail(items) {
-    var frame = document.getElementById('docFrame');
-    if (!frame) return;
+  function sortDesc(items) {
+    return items.slice().sort(function (a, b) {
+      var da = a.date || '';
+      var db = b.date || '';
+      if (da === db) return (b.id || 0) - (a.id || 0);
+      return db.localeCompare(da);          // 最新在前
+    });
+  }
 
-    var id = new URLSearchParams(location.search).get('id');
-    var item = null;
-    if (items) {
-      item = items.filter(function (x) { return String(x.id) === String(id); })[0] || null;
+  function productUrl(item) { return 'product.html?id=' + encodeURIComponent(item.id); }
+  function newsUrl(item) { return 'news.html?id=' + encodeURIComponent(item.id); }
+
+  /* ---------------- 产品按钮 ---------------- */
+  function buildButtons(item, theme) {
+    var list = (item.buttons && item.buttons.length)
+      ? item.buttons
+      : [{ label: '查看详情', url: '' }];
+
+    var box = document.createElement('div');
+    box.className = 'actions' + (theme === 'hero' ? ' actions--hero' : '');
+
+    list.slice(0, 3).forEach(function (b, i) {
+      var isDetail = !b.url;
+      var a = document.createElement('a');
+      a.href = isDetail ? productUrl(item) : b.url;
+      if (!isDetail && /^https?:/i.test(b.url)) {
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
+
+      if (i === 0) a.className = 'btn btn--primary';
+      else a.className = theme === 'hero' ? 'btn btn--ghost' : 'btn btn--ghost-dark';
+
+      a.textContent = b.label || '查看详情';
+      box.appendChild(a);
+    });
+
+    return box;
+  }
+
+  /* ---------------- 主页 ---------------- */
+  function renderHome(products, news) {
+    if (products && products.length) {
+      var sorted = sortAsc(products);
+      var first = sorted[0];              // 1 → 首屏
+      var second = sorted[1] || null;     // 2 → 大图位
+      var rest = sorted.slice(2);         // 3 之后 → 卡片
+
+      /* 首屏 */
+      var heroTitle = document.getElementById('heroTitle');
+      var heroMedia = document.getElementById('heroMedia');
+      var heroText = document.querySelector('.hero__text');
+
+      if (heroTitle) {
+        heroTitle.innerHTML = '';
+        var ha = document.createElement('a');
+        ha.className = 'hero__link';
+        ha.href = productUrl(first);
+        ha.textContent = first.title || '暂无';
+        heroTitle.appendChild(ha);
+      }
+
+      if (heroMedia) {
+        heroMedia.innerHTML = '';
+        if (first.cover) {
+          var hi = document.createElement('img');
+          hi.className = 'hero__img';
+          hi.src = first.cover;
+          hi.alt = first.title || '';
+          heroMedia.appendChild(hi);
+        } else {
+          var ph = document.createElement('div');
+          ph.className = 'ph ph--dark';
+          heroMedia.appendChild(ph);
+        }
+      }
+
+      if (heroText && first.buttons && first.buttons.length) {
+        var oldHero = heroText.querySelector('.actions');
+        if (oldHero) oldHero.remove();
+        heroText.appendChild(buildButtons(first, 'hero'));
+      }
+
+      /* 大图位 */
+      var featureSection = document.getElementById('product');
+      var featureTitle = document.getElementById('featureTitle');
+      var featureMedia = document.getElementById('featureMedia');
+      var featureHead = featureTitle ? featureTitle.parentNode : null;
+
+      if (second) {
+        if (featureTitle) featureTitle.textContent = second.title || '暂无';
+        if (featureMedia) {
+          featureMedia.innerHTML = '';
+          var fa = document.createElement('a');
+          fa.className = 'feature';
+          fa.href = productUrl(second);
+          var fi = document.createElement('img');
+          fi.className = 'feature__img';
+          fi.src = second.cover || '';
+          fi.alt = second.title || '';
+          fa.appendChild(fi);
+          featureMedia.appendChild(fa);
+        }
+        if (featureHead && second.buttons && second.buttons.length) {
+          var oldFeature = featureHead.querySelector('.actions');
+          if (oldFeature) oldFeature.remove();
+          featureHead.appendChild(buildButtons(second, 'light'));
+        }
+      } else if (featureSection) {
+        featureSection.style.display = 'none';   // 只有一个产品时整段收起
+      }
+
+      /* 卡片 */
+      var grid = document.getElementById('tileGrid');
+      if (grid) {
+        grid.innerHTML = '';
+        if (!rest.length) {
+          var empty = document.createElement('p');
+          empty.className = 'tiles__empty';
+          empty.textContent = '暂无';
+          grid.appendChild(empty);
+        } else {
+          rest.forEach(function (it) {
+            var a = document.createElement('a');
+            a.className = 'tile tile--link';
+            a.href = productUrl(it);
+
+            var h3 = document.createElement('h3');
+            h3.className = 'tile__title';
+            h3.textContent = it.title || '暂无';
+
+            var media = document.createElement('div');
+            media.className = 'tile__media';
+
+            var img = document.createElement('img');
+            img.className = 'tile__img';
+            img.src = it.cover || '';
+            img.alt = it.title || '';
+
+            media.appendChild(img);
+            a.appendChild(h3);
+            a.appendChild(media);
+            grid.appendChild(a);
+          });
+        }
+      }
     }
 
-    if (!item || !item.page) {
-      frame.replaceWith(makeEmpty());
-      return;
-    }
+    /* 新闻 */
+    renderNewsList(news);
+  }
 
-    document.title = (item.title || '产品') + ' · ZhouSys';
-    frame.src = item.page;
+  function renderNewsList(news) {
+    var ul = document.getElementById('postList');
+    if (!ul || !news || !news.length) return;
 
-    /* 把内层页面完全拉长，让它自己没有滚动条，只剩外层一条 */
+    ul.innerHTML = '';
+    sortDesc(news).slice(0, 3).forEach(function (it) {
+      var li = document.createElement('li');
+      li.className = 'post';
+
+      var a = document.createElement('a');
+      a.className = 'post__link';
+      a.href = newsUrl(it);
+
+      var main = document.createElement('div');
+      main.className = 'post__main';
+
+      var tag = document.createElement('span');
+      tag.className = 'post__tag';
+      tag.textContent = '新闻';
+
+      var h3 = document.createElement('h3');
+      h3.className = 'post__title';
+      h3.textContent = it.title || '暂无';
+
+      main.appendChild(tag);
+      main.appendChild(h3);
+
+      var time = document.createElement('time');
+      time.className = 'post__date';
+      time.textContent = it.date || '';
+
+      a.appendChild(main);
+      a.appendChild(time);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+  }
+
+  /* ---------------- 详情页（产品 / 新闻共用） ---------------- */
+  function setupFrame(frame) {
     var lastH = 0;
 
     function fit() {
@@ -181,7 +257,7 @@
           el.setAttribute('data-zs-h', el.style.height || '');
           el.setAttribute('data-zs-mh', el.style.minHeight || '');
           el.style.height = vh + 'px';
-          // 关键：min-height:100vh 会压过 height，必须一起固定，否则首屏永远跟着 iframe 变高
+          // 关键：min-height:100vh 会压过 height，必须一起固定
           el.style.minHeight = vh + 'px';
           el.setAttribute('data-zs-frozen', '1');
         }
@@ -215,7 +291,6 @@
       try { d = frame.contentDocument; } catch (e) { return; }
       if (!d || !d.body) return;
 
-      // 图片、字体、异步内容都会改变高度，补算几次
       var imgs = d.querySelectorAll('img');
       for (var i = 0; i < imgs.length; i++) {
         if (!imgs[i].complete) imgs[i].addEventListener('load', fit);
@@ -247,12 +322,52 @@
     return p;
   }
 
+  function renderDetail(items, kind) {
+    var frame = document.getElementById('docFrame');
+    if (!frame) return;
+
+    var id = param('id');
+    var item = null;
+    (items || []).forEach(function (x) {
+      if (String(x.id) === String(id)) item = x;
+    });
+
+    if (!item || !item.page) {
+      frame.replaceWith(makeEmpty());
+      return;
+    }
+
+    document.title = (item.title || '详情') + ' · ZhouSys';
+
+    if (kind === 'news') {
+      var head = document.getElementById('newsHead');
+      var t = document.getElementById('newsTitle');
+      var d = document.getElementById('newsDate');
+      if (head) head.hidden = false;
+      if (t) t.textContent = item.title || '';
+      if (d) d.textContent = item.date || '';
+    }
+
+    frame.src = item.page;
+    setupFrame(frame);
+  }
+
   /* ---------------- 启动 ---------------- */
   document.addEventListener('DOMContentLoaded', function () {
-    var isDetail = !!document.getElementById('docFrame');
-    loadProducts().then(function (items) {
-      if (isDetail) renderDetail(items);
-      else renderHome(items);
+    var page = document.body.getAttribute('data-page') || 'home';
+
+    if (page === 'product') {
+      loadJSON(DATA_PRODUCTS).then(function (items) { renderDetail(items, 'product'); });
+      return;
+    }
+
+    if (page === 'news') {
+      loadJSON(DATA_NEWS).then(function (items) { renderDetail(items, 'news'); });
+      return;
+    }
+
+    Promise.all([loadJSON(DATA_PRODUCTS), loadJSON(DATA_NEWS)]).then(function (res) {
+      renderHome(res[0], res[1]);
     });
   });
 })();
