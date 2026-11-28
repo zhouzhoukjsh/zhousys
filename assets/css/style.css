@@ -29,6 +29,9 @@
 *::before,
 *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* hidden 属性要压过组件自身的 display */
+[hidden] { display: none !important; }
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;

@@ -16,7 +16,9 @@
     repo: '',
     branch: 'main',
     products: [],
-    news: []
+    news: [],
+    editingProduct: null,
+    editingNews: null
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -230,12 +232,22 @@
       info.appendChild(m);
       li.appendChild(info);
 
+      var acts = document.createElement('div');
+      acts.className = 'admin-item-actions';
+
+      var edit = document.createElement('button');
+      edit.className = 'abtn abtn--ghost abtn--sm';
+      edit.textContent = '编辑';
+      edit.addEventListener('click', function () { startEditProduct(it); });
+
       var del = document.createElement('button');
       del.className = 'abtn abtn--danger';
       del.textContent = '删除';
       del.addEventListener('click', function () { removeProduct(it); });
 
-      li.appendChild(del);
+      acts.appendChild(edit);
+      acts.appendChild(del);
+      li.appendChild(acts);
       ul.appendChild(li);
     });
   }
@@ -264,7 +276,53 @@
     return htmls[0];
   }
 
+  function resetProductForm() {
+    $('pTitle').value = '';
+    $('pCover').value = '';
+    $('pDir').value = '';
+    $('pPage').value = '';
+    $('pDate').value = today();
+    $('coverPreview').style.display = 'none';
+    $('coverPreview').removeAttribute('src');
+    renderBtnRows(null);
+    state.editingProduct = null;
+    $('addBtn').textContent = '发布产品';
+    $('cancelPBtn').hidden = true;
+    $('pEditHint').hidden = true;
+  }
+
+  function startEditProduct(item) {
+    state.editingProduct = item;
+
+    $('pTitle').value = item.title || '';
+    $('pDate').value = item.date || today();
+    $('pCover').value = '';
+    $('pDir').value = '';
+    $('pPage').value = '';
+    renderBtnRows(item.buttons || null);
+
+    var img = $('coverPreview');
+    if (item.cover) {
+      img.src = item.cover;
+      img.style.display = 'block';
+    } else {
+      img.style.display = 'none';
+      img.removeAttribute('src');
+    }
+
+    $('addBtn').textContent = '保存修改';
+    $('cancelPBtn').hidden = false;
+
+    var hint = $('pEditHint');
+    hint.hidden = false;
+    hint.textContent = '正在编辑「' + item.title + '」。封面和简介页不重新选就保持原样。';
+
+    setMsg($('addMsg'), '');
+    $('pTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   function addProduct() {
+    var editing = state.editingProduct;
     var title = $('pTitle').value.trim();
     var coverFile = $('pCover').files[0];
     var dirFiles = $('pDir').files;
@@ -273,20 +331,26 @@
     var msg = $('addMsg');
 
     var useDir = dirFiles && dirFiles.length > 0;
+    var list = useDir ? Array.prototype.slice.call(dirFiles) : [];
+    var entry = useDir ? pickEntry(list) : null;
 
-    if (!title) { setMsg(msg, '请填写名称', 'err'); return; }
-    if (!coverFile) { setMsg(msg, '请选择封面图', 'err'); return; }
-    if (!useDir && !pageFile) {
-      setMsg(msg, '请选择简介页文件夹，或者选一个 HTML 文件', 'err');
-      return;
+    if (!title) {
+      if (editing) title = editing.title;
+      else { setMsg(msg, '请填写名称', 'err'); return; }
     }
-    if (!useDir && !/\.html?$/i.test(pageFile.name)) {
+
+    if (!editing) {
+      if (!coverFile) { setMsg(msg, '请选择封面图', 'err'); return; }
+      if (!useDir && !pageFile) {
+        setMsg(msg, '请选择简介页文件夹，或者选一个 HTML 文件', 'err');
+        return;
+      }
+    }
+
+    if (pageFile && !/\.html?$/i.test(pageFile.name)) {
       setMsg(msg, '简介页只支持 .html / .htm 文件', 'err');
       return;
     }
-
-    var list = useDir ? Array.prototype.slice.call(dirFiles) : [];
-    var entry = useDir ? pickEntry(list) : null;
     if (useDir && !entry) {
       setMsg(msg, '这个文件夹里没找到 .html 文件', 'err');
       return;
@@ -294,71 +358,102 @@
 
     var btn = $('addBtn');
     btn.disabled = true;
-    setMsg(msg, '正在上传…');
+    setMsg(msg, editing ? '正在保存…' : '正在上传…');
 
-    var id = Date.now();
-    var coverPath = 'images/covers/' + id + '.' + safeExt(coverFile.name);
-    var pagePath = '';
-    var uploaded = [];
+    var id = editing ? editing.id : Date.now();
+    var newItem = editing ? JSON.parse(JSON.stringify(editing)) : { id: id };
+    newItem.id = id;
+    newItem.title = title;
+    newItem.date = date;
+    newItem.buttons = collectButtons();
+
     var changes = [];
+    var oldCover = editing ? (editing.cover || '') : '';
+    var oldFiles = editing
+      ? (Array.isArray(editing.files) && editing.files.length
+          ? editing.files.slice()
+          : (editing.page ? [editing.page] : []))
+      : [];
 
-    /* 1. 封面 */
-    var job = coverFile.arrayBuffer().then(function (buf) {
-      changes.push({ path: coverPath, content: arrayBufferToBase64(buf) });
-    });
+    var job = Promise.resolve();
 
-    /* 2. 简介页：整个文件夹按原有相对路径上传 */
+    /* 封面（选了才替换） */
+    if (coverFile) {
+      job = job
+        .then(function () { return coverFile.arrayBuffer(); })
+        .then(function (buf) {
+          var coverPath = 'images/covers/' + id + '.' + safeExt(coverFile.name);
+          changes.push({ path: coverPath, content: arrayBufferToBase64(buf) });
+          newItem.cover = coverPath;
+          if (oldCover && oldCover !== coverPath) changes.push({ path: oldCover, remove: true });
+        });
+    }
+
+    /* 简介页（选了才替换） */
+    var newFiles = [];
     if (useDir) {
-      var top = list[0].webkitRelativePath.split('/')[0];
       var entryRel = entry.webkitRelativePath.split('/').slice(1).join('/');
-      pagePath = 'products/' + id + '/' + entryRel;
 
-      // 逐个读，避免同时展开太多文件
       list.forEach(function (f) {
         job = job.then(function () {
           return f.arrayBuffer().then(function (buf) {
             var rel = f.webkitRelativePath.split('/').slice(1).join('/');
             var dest = 'products/' + id + '/' + rel;
             changes.push({ path: dest, content: arrayBufferToBase64(buf) });
-            uploaded.push(dest);
+            newFiles.push(dest);
           });
         });
       });
+
+      job = job.then(function () {
+        newItem.page = 'products/' + id + '/' + entryRel;
+        newItem.files = newFiles;
+        oldFiles.forEach(function (p) {
+          if (p && newFiles.indexOf(p) === -1) changes.push({ path: p, remove: true });
+        });
+      });
       setMsg(msg, '正在读取 ' + list.length + ' 个文件…');
-    } else {
-      pagePath = 'products/' + id + '.html';
+    } else if (pageFile) {
       job = job.then(function () {
         return pageFile.arrayBuffer().then(function (buf) {
+          var pagePath = 'products/' + id + '.html';
           changes.push({ path: pagePath, content: arrayBufferToBase64(buf) });
-          uploaded.push(pagePath);
+          newItem.page = pagePath;
+          newItem.files = [pagePath];
+          oldFiles.forEach(function (p) {
+            if (p && p !== pagePath) changes.push({ path: p, remove: true });
+          });
         });
       });
     }
 
-    var newItem = {
-      id: id, title: title, date: date,
-      cover: coverPath, page: pagePath, files: uploaded,
-      buttons: collectButtons()
-    };
+    var backup = null;
+    var backupIdx = -1;
 
     job.then(function () {
-      state.products.push(newItem);
+      if (editing) {
+        backupIdx = state.products.findIndex(function (x) { return x.id === id; });
+        if (backupIdx > -1) {
+          backup = state.products[backupIdx];
+          state.products[backupIdx] = newItem;
+        }
+      } else {
+        state.products.push(newItem);
+      }
+
       changes.push({ path: 'data/products.json', content: b64Encode(productsPayload()) });
       setMsg(msg, '正在提交（' + changes.length + ' 个文件，1 次提交）…');
-      return commitMany(changes, '发布产品：' + title);
+      return commitMany(changes, (editing ? '修改产品：' : '发布产品：') + title);
     }).then(function () {
-      $('pTitle').value = '';
-      $('pCover').value = '';
-      $('pDir').value = '';
-      $('pPage').value = '';
-      $('coverPreview').style.display = 'none';
-      $('coverPreview').removeAttribute('src');
-      $('pDate').value = today();
+      resetProductForm();
       renderList();
-      setMsg(msg, '发布成功，站点约 1 分钟后生效', 'ok');
+      setMsg(msg, editing ? '已保存，站点约 1 分钟后生效' : '发布成功，站点约 1 分钟后生效', 'ok');
     }).catch(function (e) {
-      var i = state.products.findIndex(function (x) { return x.id === id; });
-      if (i > -1) state.products.splice(i, 1);
+      if (backup && backupIdx > -1) state.products[backupIdx] = backup;
+      if (!editing) {
+        var i = state.products.findIndex(function (x) { return x.id === id; });
+        if (i > -1) state.products.splice(i, 1);
+      }
       setMsg(msg, e.message, 'err');
     }).then(function () {
       btn.disabled = false;
@@ -518,66 +613,131 @@
       '<style>' + css + '</style></head><body><article>' + bodyHtml + '</article></body></html>';
   }
 
+  function resetNewsForm() {
+    $('nTitle').value = '';
+    $('nFile').value = '';
+    $('nDate').value = today();
+    state.editingNews = null;
+    $('addNewsBtn').textContent = '发布新闻';
+    $('cancelNBtn').hidden = true;
+    $('nEditHint').hidden = true;
+  }
+
+  function startEditNews(item) {
+    state.editingNews = item;
+
+    $('nTitle').value = item.title || '';
+    $('nDate').value = item.date || today();
+    $('nFile').value = '';
+
+    $('addNewsBtn').textContent = '保存修改';
+    $('cancelNBtn').hidden = false;
+
+    var hint = $('nEditHint');
+    hint.hidden = false;
+    hint.textContent = '正在编辑「' + item.title + '」。不重新选 Word 就只改标题和日期，正文保持原样。';
+
+    setMsg($('newsMsg'), '');
+    $('nTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   function addNews() {
+    var editing = state.editingNews;
     var titleInput = $('nTitle').value.trim();
     var file = $('nFile').files[0];
     var date = $('nDate').value || today();
     var msg = $('newsMsg');
 
-    if (!file) { setMsg(msg, '请选择 Word 文档（.docx）', 'err'); return; }
-    if (!/\.docx$/i.test(file.name)) {
+    if (file && !/\.docx$/i.test(file.name)) {
       setMsg(msg, '只支持 .docx，请在 Word 里另存为 .docx', 'err');
       return;
     }
-    if (!window.mammoth) { setMsg(msg, 'Word 解析组件没加载上，刷新页面再试', 'err'); return; }
+    if (!editing && !file) {
+      setMsg(msg, '请选择 Word 文档（.docx）', 'err');
+      return;
+    }
+    if (file && !window.mammoth) {
+      setMsg(msg, 'Word 解析组件没加载上，刷新页面再试', 'err');
+      return;
+    }
+
+    var title = titleInput || (editing ? editing.title : '');
+    if (!title) { setMsg(msg, '请填写标题', 'err'); return; }
 
     var btn = $('addNewsBtn');
     btn.disabled = true;
-    setMsg(msg, '正在解析 Word…');
+    setMsg(msg, editing ? '正在保存…' : '正在解析 Word…');
 
-    var id = Date.now();
-    var title = titleInput || file.name.replace(/\.docx$/i, '');
-    var newItem = null;
+    var id = editing ? editing.id : Date.now();
+    var newItem = editing
+      ? JSON.parse(JSON.stringify(editing))
+      : { id: id, title: title, date: date, page: '', images: [] };
 
-    file.arrayBuffer().then(function (buf) {
-      return window.mammoth.convertToHtml({ arrayBuffer: buf });
-    }).then(function (result) {
-      var content = stripDupTitle(result.value || '', title);
-      var changes = [];
-      var images = extractInlineImages(content);
-      var imgPaths = [];
+    newItem.title = title;
+    newItem.date = date;
 
-      images.forEach(function (img, i) {
-        var path = 'news/images/' + id + '_' + (i + 1) + '.' + img.ext;
-        changes.push({ path: path, content: img.b64 });
-        imgPaths.push(path);
-        content = content.split(img.full).join('../' + path);   // 相对 news/<id>.html
-      });
+    var changes = [];
+    var job = Promise.resolve();
 
-      var pagePath = 'news/' + id + '.html';
-      changes.push({ path: pagePath, content: b64Encode(wrapNewsHtml(content)) });
+    if (file) {
+      job = job
+        .then(function () {
+          setMsg(msg, '正在解析 Word…');
+          return file.arrayBuffer();
+        })
+        .then(function (buf) {
+          return window.mammoth.convertToHtml({ arrayBuffer: buf });
+        })
+        .then(function (result) {
+          var content = stripDupTitle(result.value || '', title);
+          var images = extractInlineImages(content);
+          var imgPaths = [];
 
-      newItem = {
-        id: id,
-        title: title,
-        date: date,
-        page: pagePath,
-        images: imgPaths
-      };
-      state.news.push(newItem);
+          images.forEach(function (img, i) {
+            var path = 'news/images/' + id + '_' + (i + 1) + '.' + img.ext;
+            changes.push({ path: path, content: img.b64 });
+            imgPaths.push(path);
+            content = content.split(img.full).join('../' + path);
+          });
+
+          var oldImages = (editing && editing.images) ? editing.images : [];
+          oldImages.forEach(function (p) {
+            if (p && imgPaths.indexOf(p) === -1) changes.push({ path: p, remove: true });
+          });
+
+          var pagePath = 'news/' + id + '.html';
+          changes.push({ path: pagePath, content: b64Encode(wrapNewsHtml(content)) });
+
+          newItem.page = pagePath;
+          newItem.images = imgPaths;
+        });
+    }
+
+    var backup = null;
+    var backupIdx = -1;
+
+    job.then(function () {
+      if (editing) {
+        backupIdx = state.news.findIndex(function (x) { return x.id === id; });
+        if (backupIdx > -1) {
+          backup = state.news[backupIdx];
+          state.news[backupIdx] = newItem;
+        }
+      } else {
+        state.news.push(newItem);
+      }
+
       changes.push({ path: 'data/news.json', content: b64Encode(newsPayload()) });
-
       setMsg(msg, '正在提交（' + changes.length + ' 个文件，1 次提交）…');
-      return commitMany(changes, '发布新闻：' + title);
+      return commitMany(changes, (editing ? '修改新闻：' : '发布新闻：') + title);
     }).then(function () {
-      $('nTitle').value = '';
-      $('nFile').value = '';
-      $('nDate').value = today();
+      resetNewsForm();
       renderNewsList();
-      setMsg(msg, '发布成功，站点约 1 分钟后生效', 'ok');
+      setMsg(msg, editing ? '已保存，站点约 1 分钟后生效' : '发布成功，站点约 1 分钟后生效', 'ok');
     }).catch(function (e) {
-      if (newItem) {
-        var i = state.news.findIndex(function (x) { return x.id === newItem.id; });
+      if (backup && backupIdx > -1) state.news[backupIdx] = backup;
+      if (!editing) {
+        var i = state.news.findIndex(function (x) { return x.id === id; });
         if (i > -1) state.news.splice(i, 1);
       }
       setMsg(msg, e.message, 'err');
@@ -644,11 +804,22 @@
       info.appendChild(m);
       li.appendChild(info);
 
+      var acts = document.createElement('div');
+      acts.className = 'admin-item-actions';
+
+      var edit = document.createElement('button');
+      edit.className = 'abtn abtn--ghost abtn--sm';
+      edit.textContent = '编辑';
+      edit.addEventListener('click', function () { startEditNews(it); });
+
       var del = document.createElement('button');
       del.className = 'abtn abtn--danger';
       del.textContent = '删除';
       del.addEventListener('click', function () { removeNews(it); });
-      li.appendChild(del);
+
+      acts.appendChild(edit);
+      acts.appendChild(del);
+      li.appendChild(acts);
 
       ul.appendChild(li);
     });
@@ -715,6 +886,14 @@
     $('logoutBtn').addEventListener('click', logout);
     $('addBtn').addEventListener('click', addProduct);
     $('addBtnRow').addEventListener('click', function () { addBtnRow('', ''); });
+    $('cancelPBtn').addEventListener('click', function () {
+      resetProductForm();
+      setMsg($('addMsg'), '已取消编辑');
+    });
+    $('cancelNBtn').addEventListener('click', function () {
+      resetNewsForm();
+      setMsg($('newsMsg'), '已取消编辑');
+    });
     $('addNewsBtn').addEventListener('click', addNews);
 
     renderBtnRows(null);

@@ -260,3 +260,18 @@
   .btn-row { grid-template-columns: 1fr; gap: 8px; }
   .btn-row .btn-del { justify-self: start; }
 }
+
+/* ---------- 编辑态 ---------- */
+.btn-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.edit-hint {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1b6f9c;
+  background: rgba(42, 169, 224, 0.1);
+  border-radius: 10px;
+}
+
+.admin-item-actions { display: flex; gap: 8px; flex: none; }

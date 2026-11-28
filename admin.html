@@ -111,7 +111,11 @@
           </span>
         </div>
 
-        <button class="abtn abtn--primary" id="addBtn">发布产品</button>
+        <p class="edit-hint" id="pEditHint" hidden></p>
+        <div class="btn-bar">
+          <button class="abtn abtn--primary" id="addBtn">发布产品</button>
+          <button class="abtn abtn--ghost" id="cancelPBtn" hidden>取消编辑</button>
+        </div>
         <p class="admin-msg" id="addMsg"></p>
 
         <h3 class="sub-title">已有产品</h3>
@@ -140,7 +144,11 @@
           <input type="date" id="nDate">
         </div>
 
-        <button class="abtn abtn--primary" id="addNewsBtn">发布新闻</button>
+        <p class="edit-hint" id="nEditHint" hidden></p>
+        <div class="btn-bar">
+          <button class="abtn abtn--primary" id="addNewsBtn">发布新闻</button>
+          <button class="abtn abtn--ghost" id="cancelNBtn" hidden>取消编辑</button>
+        </div>
         <p class="admin-msg" id="newsMsg"></p>
 
         <h3 class="sub-title">已有新闻</h3>
