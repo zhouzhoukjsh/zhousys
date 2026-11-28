@@ -397,6 +397,12 @@ ul, ol { list-style: none; }
 
 /* 首屏上的按钮组 */
 .actions--hero { margin-top: clamp(20px, 2.4vw, 28px); }
+
+/* 通栏模块底部的按钮组 */
+.actions--block {
+  justify-content: center;
+  margin-top: clamp(26px, 3.4vw, 40px);
+}
 .actions--hero .btn { font-size: 16px; }
 
 /* =========================================================

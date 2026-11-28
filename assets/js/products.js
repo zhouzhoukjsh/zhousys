@@ -80,7 +80,7 @@
   /* ---------------- 主页 ---------------- */
   function renderHome(products, news) {
     if (products && products.length) {
-      var sorted = sortAsc(products);
+      var sorted = sortDesc(products);   // 发布时间越晚越靠前
       var first = sorted[0];              // 1 → 首屏
       var second = sorted[1] || null;     // 2 → 大图位
       var rest = sorted.slice(2);         // 3 之后 → 卡片
@@ -140,10 +140,12 @@
           fa.appendChild(fi);
           featureMedia.appendChild(fa);
         }
-        if (featureHead && second.buttons && second.buttons.length) {
-          var oldFeature = featureHead.querySelector('.actions');
+        if (featureSection && second.buttons && second.buttons.length) {
+          var oldFeature = featureSection.querySelector('.actions');
           if (oldFeature) oldFeature.remove();
-          featureHead.appendChild(buildButtons(second, 'light'));
+          var featBtns = buildButtons(second, 'light');
+          featBtns.classList.add('actions--block');   // 放到模块最底下
+          featureSection.appendChild(featBtns);
         }
       } else if (featureSection) {
         featureSection.style.display = 'none';   // 只有一个产品时整段收起
@@ -229,9 +231,46 @@
 
   /* ---------------- 详情页（产品 / 新闻共用） ---------------- */
   function setupFrame(frame) {
-    var lastH = 0;
+    var frozen = false;
 
-    function fit() {
+    function unfreeze(d) {
+      var all = d.querySelectorAll('[data-zs-frozen]');
+      for (var i = 0; i < all.length; i++) {
+        all[i].style.height = all[i].getAttribute('data-zs-h') || '';
+        all[i].style.minHeight = all[i].getAttribute('data-zs-mh') || '';
+        all[i].removeAttribute('data-zs-frozen');
+      }
+    }
+
+    // 页面的首屏常写 min-height:100vh 或 height:100vh。
+    // 在 iframe 里 vh = iframe 高度，一旦 iframe 撑高，它会跟着长高 → 高度永远算不稳。
+    // 所以把 min-height / height 的计算值正好等于「一屏」的元素固定成 px。
+    // 注意不能只看元素自身高度：min-height:100vh 的容器内容可能超过一屏。
+    function freezeViewport(d, vh) {
+      var nodes = d.body.querySelectorAll('*');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (el.hasAttribute('data-zs-frozen')) continue;
+
+        var cs;
+        try { cs = d.defaultView.getComputedStyle(el); } catch (e) { continue; }
+        if (cs.display === 'none') continue;
+
+        var mh = parseFloat(cs.minHeight);
+        var hh = parseFloat(cs.height);
+        var hitMin = !isNaN(mh) && Math.abs(mh - vh) < 1.5;
+        var hitH = !isNaN(hh) && Math.abs(hh - vh) < 1.5;
+        if (!hitMin && !hitH) continue;
+
+        el.setAttribute('data-zs-h', el.style.height || '');
+        el.setAttribute('data-zs-mh', el.style.minHeight || '');
+        if (hitMin) el.style.minHeight = vh + 'px';
+        if (hitH) el.style.height = vh + 'px';
+        el.setAttribute('data-zs-frozen', '1');
+      }
+    }
+
+    function measure() {
       var d;
       try { d = frame.contentDocument; } catch (e) { return; }
       if (!d || !d.body) return;
@@ -239,80 +278,105 @@
       var body = d.body;
       var vh = window.innerHeight;
 
-      // 1) 先把 iframe 撑到一屏，让页面里的 100vh 按真实一屏计算
-      frame.style.height = vh + 'px';
-
-      // 2) 高度正好等于一屏的元素（典型 100vh 首屏）冻结成 px，
-      //    否则它会跟着 iframe 变高，永远算不出稳定高度
-      var nodes = body.querySelectorAll('*');
-      for (var i = 0; i < nodes.length; i++) {
-        var el = nodes[i];
-        if (el.getAttribute('data-zs-frozen') === '1') {
-          el.style.height = el.getAttribute('data-zs-h') || '';
-          el.style.minHeight = el.getAttribute('data-zs-mh') || '';
-          el.removeAttribute('data-zs-frozen');
-        }
-        var rect = el.getBoundingClientRect();
-        if (rect.height > 0 && Math.abs(rect.height - vh) < 1) {
-          el.setAttribute('data-zs-h', el.style.height || '');
-          el.setAttribute('data-zs-mh', el.style.minHeight || '');
-          el.style.height = vh + 'px';
-          // 关键：min-height:100vh 会压过 height，必须一起固定
-          el.style.minHeight = vh + 'px';
-          el.setAttribute('data-zs-frozen', '1');
-        }
-      }
-
-      // 3) 关掉内层滚动，外层拉满内容高度
+      // 内层不滚动，滚动条只留外层一条
       try {
         d.documentElement.style.overflow = 'hidden';
         body.style.overflow = 'hidden';
       } catch (e) { /* 跨域时忽略 */ }
 
-      var r = body.getBoundingClientRect();
-      var h = Math.ceil(Math.max(r.height, body.scrollHeight, body.offsetHeight)) + 1;
-      if (h <= 1) return;
-
-      if (Math.abs(h - lastH) < 1) {
-        // 高度没变：把测量时临时设成的「一屏」还回去，否则会停在一屏
-        frame.style.height = lastH + 'px';
-        return;
+      if (!frozen) {
+        unfreeze(d);
+        frame.style.height = vh + 'px';   // 让 100vh 先按真实一屏算
+        freezeViewport(d, vh);
+        frozen = true;
       }
 
-      lastH = h;
-      frame.style.height = h + 'px';
+      var h = Math.ceil(Math.max(
+        body.getBoundingClientRect().height,
+        body.scrollHeight,
+        body.offsetHeight
+      )) + 1;
+
+      if (h > 1) frame.style.height = h + 'px';
+    }
+
+    // 兜底：页面里「滚动到才显示」的元素靠 IntersectionObserver，
+    // iframe 被撑满后没有滚动空间，它们可能永远收不到触发信号 → 一片空白。
+    // 这里把仍然是全透明的元素直接显示出来（display:none 的不动）。
+    function forceVisible(d) {
+      try {
+        var all = d.body.querySelectorAll('*');
+        for (var i = 0; i < all.length; i++) {
+          var el = all[i];
+          var cs = d.defaultView.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+          if (parseFloat(cs.opacity) < 0.05) {
+            el.style.opacity = '1';
+            if (cs.transform && cs.transform !== 'none') el.style.transform = 'none';
+          }
+        }
+      } catch (e) { /* 跨域时忽略 */ }
     }
 
     function watch() {
-      lastH = 0;
-      fit();
+      frozen = false;
 
       var d;
       try { d = frame.contentDocument; } catch (e) { return; }
       if (!d || !d.body) return;
 
+      frame.style.visibility = 'hidden';
+      frame.style.height = window.innerHeight + 'px';
+
+      setTimeout(function () {
+        try {
+          d.documentElement.style.overflow = 'hidden';
+          d.body.style.overflow = 'hidden';
+        } catch (e) { /* 跨域时忽略 */ }
+
+        if (!frozen) {
+          freezeViewport(d, window.innerHeight);
+          frozen = true;
+        }
+
+        measure();
+        frame.style.visibility = 'visible';
+        bindLate(d);
+
+        // 先让页面自己的动画跑一会儿，再把还没露出来的补上
+        setTimeout(function () {
+          forceVisible(d);
+          measure();
+        }, 800);
+        setTimeout(function () {
+          forceVisible(d);
+          measure();
+        }, 2000);
+      }, 60);
+    }
+
+    function bindLate(d) {
       var imgs = d.querySelectorAll('img');
       for (var i = 0; i < imgs.length; i++) {
-        if (!imgs[i].complete) imgs[i].addEventListener('load', fit);
+        if (!imgs[i].complete) imgs[i].addEventListener('load', measure);
       }
-      if (d.fonts && d.fonts.ready) d.fonts.ready.then(fit).catch(function () {});
+      if (d.fonts && d.fonts.ready) d.fonts.ready.then(measure).catch(function () {});
 
-      if (window.ResizeObserver) {
-        var timer = 0;
-        var ro = new ResizeObserver(function () {
-          clearTimeout(timer);
-          timer = setTimeout(fit, 80);
-        });
-        ro.observe(d.body);
-      }
-
-      setTimeout(fit, 400);
-      setTimeout(fit, 1200);
+      setTimeout(measure, 200);
+      setTimeout(measure, 600);
+      setTimeout(measure, 1200);
+      setTimeout(measure, 2200);
+      setTimeout(measure, 3500);
     }
 
     frame.addEventListener('load', watch);
-    window.addEventListener('resize', fit);
-    setTimeout(fit, 300);
+
+    window.addEventListener('resize', function () {
+      frozen = false;
+      measure();
+    });
+
+    setTimeout(measure, 300);
   }
 
   function makeEmpty() {
