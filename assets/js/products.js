@@ -232,6 +232,7 @@
   /* ---------------- 详情页（产品 / 新闻共用） ---------------- */
   function setupFrame(frame) {
     var frozen = false;
+    var started = false;
 
     function unfreeze(d) {
       var all = d.querySelectorAll('[data-zs-frozen]');
@@ -242,10 +243,8 @@
       }
     }
 
-    // 页面的首屏常写 min-height:100vh 或 height:100vh。
-    // 在 iframe 里 vh = iframe 高度，一旦 iframe 撑高，它会跟着长高 → 高度永远算不稳。
-    // 所以把 min-height / height 的计算值正好等于「一屏」的元素固定成 px。
-    // 注意不能只看元素自身高度：min-height:100vh 的容器内容可能超过一屏。
+    // 首屏常写 min-height:100vh / height:100vh，在 iframe 里 vh 就是 iframe 高度，
+    // 一旦撑高它会跟着长高，高度永远算不稳。把计算值正好等于一屏的固定成 px。
     function freezeViewport(d, vh) {
       var nodes = d.body.querySelectorAll('*');
       for (var i = 0; i < nodes.length; i++) {
@@ -278,7 +277,6 @@
       var body = d.body;
       var vh = window.innerHeight;
 
-      // 内层不滚动，滚动条只留外层一条
       try {
         d.documentElement.style.overflow = 'hidden';
         body.style.overflow = 'hidden';
@@ -286,7 +284,7 @@
 
       if (!frozen) {
         unfreeze(d);
-        frame.style.height = vh + 'px';   // 让 100vh 先按真实一屏算
+        frame.style.height = vh + 'px';
         freezeViewport(d, vh);
         frozen = true;
       }
@@ -301,8 +299,7 @@
     }
 
     // 兜底：页面里「滚动到才显示」的元素靠 IntersectionObserver，
-    // iframe 被撑满后没有滚动空间，它们可能永远收不到触发信号 → 一片空白。
-    // 这里把仍然是全透明的元素直接显示出来（display:none 的不动）。
+    // iframe 撑满后没有滚动空间，它们可能永远收不到信号 → 一片空白。
     function forceVisible(d) {
       try {
         var all = d.body.querySelectorAll('*');
@@ -316,6 +313,30 @@
           }
         }
       } catch (e) { /* 跨域时忽略 */ }
+    }
+
+    function bindLate(d) {
+      var imgs = d.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        if (!imgs[i].complete) imgs[i].addEventListener('load', measure);
+      }
+      if (d.fonts && d.fonts.ready) d.fonts.ready.then(measure).catch(function () {});
+
+      // 内容高度还会变（图片陆续到），持续校正
+      if (window.ResizeObserver) {
+        try {
+          var timer = 0;
+          var ro = new ResizeObserver(function () {
+            clearTimeout(timer);
+            timer = setTimeout(measure, 150);
+          });
+          ro.observe(d.body);
+        } catch (e) { /* 忽略 */ }
+      }
+
+      [200, 600, 1200, 2200, 3500, 6000].forEach(function (t) {
+        setTimeout(measure, t);
+      });
     }
 
     function watch() {
@@ -343,40 +364,33 @@
         frame.style.visibility = 'visible';
         bindLate(d);
 
-        // 先让页面自己的动画跑一会儿，再把还没露出来的补上
-        setTimeout(function () {
-          forceVisible(d);
-          measure();
-        }, 800);
-        setTimeout(function () {
-          forceVisible(d);
-          measure();
-        }, 2000);
+        setTimeout(function () { forceVisible(d); measure(); }, 800);
+        setTimeout(function () { forceVisible(d); measure(); }, 2000);
       }, 60);
     }
 
-    function bindLate(d) {
-      var imgs = d.querySelectorAll('img');
-      for (var i = 0; i < imgs.length; i++) {
-        if (!imgs[i].complete) imgs[i].addEventListener('load', measure);
-      }
-      if (d.fonts && d.fonts.ready) d.fonts.ready.then(measure).catch(function () {});
-
-      setTimeout(measure, 200);
-      setTimeout(measure, 600);
-      setTimeout(measure, 1200);
-      setTimeout(measure, 2200);
-      setTimeout(measure, 3500);
+    function run() {
+      if (started) return;
+      started = true;
+      watch();
     }
 
-    frame.addEventListener('load', watch);
+    frame.addEventListener('load', run);
 
-    window.addEventListener('resize', function () {
-      frozen = false;
-      measure();
-    });
-
-    setTimeout(measure, 300);
+    // iframe 可能已经从缓存里加载完，load 事件早就错过了 → 主动探测一次
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var d = null;
+      try { d = frame.contentDocument; } catch (e) { /* 忽略 */ }
+      if (d && d.readyState === 'complete' && d.body) {
+        clearInterval(timer);
+        run();
+      } else if (tries > 50) {
+        clearInterval(timer);
+        run();
+      }
+    }, 100);
   }
 
   function makeEmpty() {
